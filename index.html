@@ -1,0 +1,1691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATS CV Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=Lora:wght@500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<style>
+  :root{
+    --paper:#FAF9F6; --panel:#FFFFFF; --ink:#1B2A4A; --text:#2B2E33;
+    --muted:#6B7280; --border:#E3E1DA; --teal:#2F6F62; --danger:#B3491F; --focus:#2F6F62;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--paper);color:var(--text);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
+  .app{max-width:1460px;margin:0 auto;padding:28px 24px 60px;}
+  .app-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:22px;flex-wrap:wrap;gap:14px;}
+  .app-header h1{font-family:'Source Serif 4',serif;font-size:28px;font-weight:700;color:var(--ink);margin:0 0 4px;letter-spacing:-0.01em;}
+  .app-header p{margin:0;color:var(--muted);font-size:14px;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);margin:0 0 6px;}
+  .ats-badge{display:inline-flex;align-items:center;gap:7px;background:#EEF3F1;border:1px solid #cfe0d9;color:var(--teal);font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.02em;padding:7px 12px;border-radius:20px;white-space:nowrap;}
+  .ats-badge .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 3px rgba(47,111,98,.18);}
+
+  .workbench{display:grid;grid-template-columns:minmax(360px,420px) 1fr;gap:22px;align-items:start;}
+  @media (max-width:980px){.workbench{grid-template-columns:1fr;}}
+
+  .form-pane{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:6px;max-height:calc(100vh - 40px);overflow-y:auto;position:sticky;top:16px;}
+  @media (max-width:980px){.form-pane{position:static;max-height:none;}}
+  .section{border-bottom:1px solid var(--border);}
+  .section:last-child{border-bottom:none;}
+  .section-head{width:100%;background:none;border:none;text-align:left;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:16px 14px;font-family:'Inter',sans-serif;font-weight:600;font-size:14.5px;color:var(--ink);}
+  .section-head .num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;background:#EEF1F6;color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:11px;margin-right:10px;}
+  .section-head .chev{transition:transform .2s ease;color:var(--muted);}
+  .section.open .section-head .chev{transform:rotate(180deg);}
+  .section-body{padding:0 14px 18px;display:none;}
+  .section.open .section-body{display:block;}
+
+  label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:10px 0 5px;}
+  input[type=text],input[type=email],input[type=tel],input[type=month],textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 10px;font-family:'Inter',sans-serif;font-size:13.5px;color:var(--text);background:#FCFCFB;transition:border-color .15s ease, box-shadow .15s ease;}
+  input:focus,textarea:focus{outline:none;border-color:var(--focus);box-shadow:0 0 0 3px rgba(47,111,98,.14);}
+  textarea{resize:vertical;min-height:64px;line-height:1.45;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:4px;}
+
+  .entry-card{border:1px dashed var(--border);border-radius:10px;padding:12px 12px 6px;margin:12px 0;background:#FDFDFC;}
+  .entry-card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;}
+  .entry-title{font-size:12px;font-weight:700;color:var(--ink);text-transform:uppercase;letter-spacing:.04em;}
+  .icon-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:6px;}
+  .icon-btn:hover{background:#F2F1EC;color:var(--danger);}
+  .add-btn{width:100%;margin-top:6px;background:#F4F6F5;border:1px solid #d9e3e0;color:var(--teal);font-weight:600;font-size:13px;border-radius:8px;padding:9px;cursor:pointer;}
+  .add-btn:hover{background:#EAF1EF;}
+  .checkbox-row{display:flex;align-items:center;gap:7px;margin-top:8px;font-size:12.5px;color:var(--muted);}
+  .checkbox-row input{width:auto;}
+
+  /* ---------- PREVIEW PANE ---------- */
+  .preview-pane{min-width:0;}
+  .toolbar{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:16px;display:flex;flex-direction:column;gap:12px;}
+  .toolbar-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;}
+  .toolbar-group{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .toolbar-label{font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-right:2px;}
+  .swatches{display:flex;gap:8px;flex-wrap:wrap;}
+  .swatch{padding:7px 12px;border-radius:9px;border:1.5px solid var(--border);cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text);background:#fff;display:flex;align-items:center;gap:7px;}
+  .swatch .chip{width:12px;height:12px;border-radius:3px;flex:none;}
+  .swatch.active{border-color:var(--teal);box-shadow:0 0 0 3px rgba(47,111,98,.14);}
+  .density-btns{display:flex;border:1px solid var(--border);border-radius:9px;overflow:hidden;}
+  .density-btns button{border:none;background:#fff;padding:7px 11px;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted);}
+  .density-btns button.active{background:var(--ink);color:#fff;}
+  .accent-picker{display:flex;align-items:center;gap:6px;}
+  .accent-picker input[type=color]{width:30px;height:30px;border:1.5px solid var(--border);border-radius:8px;padding:2px;cursor:pointer;background:#fff;}
+  .reset-link{background:none;border:none;color:var(--teal);font-size:11.5px;font-weight:600;cursor:pointer;text-decoration:underline;padding:0;}
+  .export-btns{display:flex;gap:8px;}
+  .btn{border:none;border-radius:9px;padding:10px 16px;font-weight:600;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:7px;font-family:'Inter',sans-serif;}
+  .btn-pdf{background:var(--ink);color:#fff;}
+  .btn-pdf:hover{background:#141f38;}
+  .btn-docx{background:var(--teal);color:#fff;}
+  .btn-docx:hover{background:#265c50;}
+
+  .paper-wrap{background:#EDEBE4;border-radius:16px;padding:26px;display:flex;justify-content:center;}
+  .resume{width:100%;max-width:730px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.05), 0 14px 34px -14px rgba(20,20,30,.35);padding:46px 50px;min-height:960px;font-family:'Inter',sans-serif;color:#242832;}
+  .resume.density-compact{padding:32px 42px;}
+  .resume.density-compact .r-item{margin-bottom:8px;}
+  .resume.density-compact .r-sec-title{margin:14px 0 7px;}
+  .resume.density-spacious .r-item{margin-bottom:19px;}
+  .resume.density-spacious .r-sec-title{margin:30px 0 14px;}
+
+  .r-headline-row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;}
+  .monogram{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex:none;letter-spacing:.02em;}
+
+  /* Theme: classic */
+  .theme-classic .r-name{font-family:'Source Serif 4',serif;font-weight:700;font-size:29px;color:var(--accent);margin:0;}
+  .theme-classic .r-title{font-size:14px;color:#4a5568;margin:3px 0 10px;font-weight:500;}
+  .theme-classic .r-contact{font-size:11.5px;color:#5b6472;}
+  .theme-classic .r-sec-title{font-family:'Source Serif 4',serif;font-weight:700;font-size:14.5px;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;border-bottom:1.6px solid var(--accent);padding-bottom:4px;margin:22px 0 10px;}
+  .theme-classic .r-item-title{font-weight:700;font-size:13.5px;color:#1e2533;}
+  .theme-classic .r-item-sub{font-size:12.5px;color:#4a5568;font-style:italic;}
+  .theme-classic .r-item-date{font-size:11.5px;color:#6b7280;font-family:'IBM Plex Mono',monospace;}
+  .theme-classic .r-skill{background:#EEF1F6;color:var(--accent);}
+  .theme-classic .monogram{background:var(--accent);color:#fff;}
+
+  /* Theme: modern */
+  .theme-modern .r-name{font-family:'Inter',sans-serif;font-weight:800;font-size:29px;color:#14261F;margin:0;letter-spacing:-.01em;}
+  .theme-modern .r-title{font-size:14px;color:var(--accent);margin:3px 0 10px;font-weight:600;}
+  .theme-modern .r-contact{font-size:11.5px;color:#5b6472;}
+  .theme-modern .r-sec-title{font-family:'Inter',sans-serif;font-weight:700;font-size:12.5px;color:#14261F;text-transform:uppercase;letter-spacing:.07em;border-left:4px solid var(--accent);padding:3px 0 3px 10px;margin:22px 0 10px;}
+  .theme-modern .r-item-title{font-weight:700;font-size:13.5px;color:#14261F;}
+  .theme-modern .r-item-sub{font-size:12.5px;color:var(--accent);font-weight:600;}
+  .theme-modern .r-item-date{font-size:11.5px;color:#6b7280;font-family:'IBM Plex Mono',monospace;}
+  .theme-modern .r-skill{background:#E9F2EF;color:var(--accent);}
+  .theme-modern .monogram{background:#E9F2EF;color:var(--accent);border:2px solid var(--accent);}
+
+  /* Theme: minimal */
+  .theme-minimal .r-name{font-family:'Inter',sans-serif;font-weight:700;font-size:27px;color:#1A1A1A;margin:0;}
+  .theme-minimal .r-title{font-size:13.5px;color:#767676;margin:3px 0 10px;font-weight:500;}
+  .theme-minimal .r-contact{font-size:11.5px;color:#8a8a8a;}
+  .theme-minimal .r-sec-title{font-family:'Inter',sans-serif;font-weight:600;font-size:11.5px;color:#1A1A1A;text-transform:uppercase;letter-spacing:.12em;border-bottom:1px solid #d8d8d8;padding-bottom:4px;margin:24px 0 10px;}
+  .theme-minimal .r-item-title{font-weight:600;font-size:13.5px;color:#1A1A1A;}
+  .theme-minimal .r-item-sub{font-size:12.5px;color:#767676;}
+  .theme-minimal .r-item-date{font-size:11.5px;color:#9b9b9b;font-family:'IBM Plex Mono',monospace;}
+  .theme-minimal .r-skill{background:#F2F2F0;color:#333;}
+  .theme-minimal .monogram{display:none;}
+
+  /* Theme: executive */
+  .theme-executive{padding:0;}
+  .theme-executive .r-header-band{background:#101826;color:#fff;padding:34px 50px 24px;}
+  .theme-executive .r-name{font-family:'Lora',serif;font-weight:700;font-size:28px;color:#fff;margin:0;}
+  .theme-executive .r-title{font-size:13.5px;color:#c9d2e0;margin:3px 0 10px;font-weight:500;}
+  .theme-executive .r-contact{font-size:11.5px;color:#a9b3c4;}
+  .theme-executive .r-body{padding:26px 50px 46px;}
+  .theme-executive .r-sec-title{font-family:'Lora',serif;font-weight:700;font-size:13.5px;color:#101826;text-transform:uppercase;letter-spacing:.05em;border-bottom:1.6px solid var(--accent);padding-bottom:4px;margin:22px 0 10px;}
+  .theme-executive .r-item-title{font-weight:700;font-size:13.5px;color:#101826;}
+  .theme-executive .r-item-sub{font-size:12.5px;color:var(--accent);font-weight:600;}
+  .theme-executive .r-item-date{font-size:11.5px;color:#6b7280;font-family:'IBM Plex Mono',monospace;}
+  .theme-executive .r-skill{background:#F4E9EA;color:var(--accent);}
+  .theme-executive .monogram{background:var(--accent);color:#fff;}
+
+  /* Theme: bold */
+  .theme-bold{padding:0;}
+  .theme-bold .r-header-band{background:var(--accent);color:#fff;padding:36px 50px 26px;}
+  .theme-bold .r-name{font-family:'Poppins',sans-serif;font-weight:800;font-size:28px;color:#fff;margin:0;}
+  .theme-bold .r-title{font-size:14px;color:rgba(255,255,255,.88);margin:4px 0 10px;font-weight:600;}
+  .theme-bold .r-contact{font-size:11.5px;color:rgba(255,255,255,.78);}
+  .theme-bold .r-body{padding:26px 50px 46px;}
+  .theme-bold .r-sec-title{font-family:'Poppins',sans-serif;font-weight:700;font-size:12px;color:#fff;background:var(--accent);text-transform:uppercase;letter-spacing:.06em;padding:6px 12px;border-radius:6px;display:inline-block;margin:22px 0 10px;}
+  .theme-bold .r-item-title{font-weight:700;font-size:13.5px;color:#1A1A1A;}
+  .theme-bold .r-item-sub{font-size:12.5px;color:var(--accent);font-weight:700;}
+  .theme-bold .r-item-date{font-size:11.5px;color:#6b7280;font-family:'IBM Plex Mono',monospace;}
+  .theme-bold .r-skill{background:var(--accent);color:#fff;}
+  .theme-bold .monogram{background:#fff;color:var(--accent);}
+
+  /* Theme: elegant */
+  .theme-elegant .r-name{font-family:'Playfair Display',serif;font-weight:700;font-style:italic;font-size:30px;color:#2b2320;margin:0;}
+  .theme-elegant .r-title{font-size:13.5px;color:var(--accent);margin:4px 0 10px;font-weight:600;letter-spacing:.03em;}
+  .theme-elegant .r-contact{font-size:11.5px;color:#8a7d78;}
+  .theme-elegant .r-sec-title{font-family:'Playfair Display',serif;font-weight:600;font-style:italic;font-size:15px;color:#2b2320;text-align:center;margin:24px 0 10px;position:relative;}
+  .theme-elegant .r-sec-title:before,.theme-elegant .r-sec-title:after{content:'';display:inline-block;width:40px;height:1px;background:var(--accent);vertical-align:middle;margin:0 10px;}
+  .theme-elegant .r-item-title{font-weight:700;font-size:13.5px;color:#2b2320;}
+  .theme-elegant .r-item-sub{font-size:12.5px;color:var(--accent);font-style:italic;}
+  .theme-elegant .r-item-date{font-size:11.5px;color:#9b8f8a;font-family:'IBM Plex Mono',monospace;}
+  .theme-elegant .r-skill{background:#F7EDEC;color:var(--accent);}
+  .theme-elegant .monogram{background:#F7EDEC;color:var(--accent);border:1.5px solid var(--accent);}
+  .theme-elegant .r-headline-row{flex-direction:column;align-items:center;text-align:center;}
+  .theme-elegant .r-headline-row .monogram{margin-bottom:8px;}
+
+  .r-item{margin-bottom:13px;}
+  .r-item-toprow{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;}
+  .r-bullets{margin:6px 0 0;padding-left:18px;}
+  .r-bullets li{font-size:12.5px;line-height:1.55;margin-bottom:3px;color:#333a44;}
+  .r-summary{font-size:12.8px;line-height:1.6;color:#333a44;margin:0;}
+  .r-skills-wrap{display:flex;flex-wrap:wrap;gap:7px;}
+  .r-skill{font-size:11.5px;padding:4px 10px;border-radius:20px;font-weight:600;}
+  .r-contact{display:flex;flex-wrap:wrap;gap:4px 12px;}
+  .r-ref-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .r-empty{color:#b7bcc4;font-style:italic;font-size:12.5px;}
+
+  footer.note{margin-top:18px;color:var(--muted);font-size:11.5px;text-align:center;}
+
+  /* ---------- IMPORT CV BOX ---------- */
+  .import-box{margin:12px;border:1.5px dashed #cfe0d9;background:#F4F8F6;border-radius:12px;padding:14px;}
+  .import-box-head{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;}
+  .import-icon{font-size:18px;color:var(--teal);flex:none;line-height:1;}
+  .import-title{font-weight:700;font-size:13.5px;color:var(--ink);}
+  .import-sub{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.4;}
+  .import-btn{width:100%;background:var(--teal);color:#fff;border:none;border-radius:8px;padding:9px;font-weight:600;font-size:13px;cursor:pointer;}
+  .import-btn:hover{background:#265c50;}
+  .import-btn:disabled{opacity:.6;cursor:not-allowed;}
+  .import-status{margin-top:8px;font-size:11.5px;color:var(--muted);min-height:14px;line-height:1.4;}
+  .import-status.ok{color:var(--teal);font-weight:600;}
+  .import-status.err{color:var(--danger);font-weight:600;}
+  .import-filename{font-size:11px;color:var(--muted);margin-top:6px;word-break:break-all;}
+
+  /* ---------- ATS MATCH ---------- */
+  .ats-score-wrap{display:flex;align-items:center;gap:16px;margin:6px 0 4px;}
+  .ats-score-ring{position:relative;width:84px;height:84px;flex:none;}
+  .ats-score-ring svg{transform:rotate(-90deg);}
+  .ats-score-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:17px;}
+  .ats-score-label{font-size:12.5px;color:var(--text);line-height:1.5;}
+  .kw-group-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:14px 0 6px;}
+  .kw-wrap{display:flex;flex-wrap:wrap;gap:6px;}
+  .kw-chip{font-size:11.5px;padding:4px 9px;border-radius:14px;font-weight:600;}
+  .kw-chip.matched{background:#E9F2EF;color:var(--teal);}
+  .kw-chip.missing{background:#FBEDE7;color:var(--danger);}
+  .kw-check-wrap{display:flex;flex-wrap:wrap;gap:8px 14px;}
+  .kw-check{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);}
+  .kw-check input{width:auto;margin:0;}
+  .tailor-title-align{margin-top:14px;}
+  .title-align-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .title-align-from{font-size:12.5px;color:var(--muted);text-decoration:line-through;flex:none;}
+  .title-align-arrow{color:var(--muted);flex:none;}
+  .title-align-row input{flex:1;min-width:140px;width:auto;}
+  .rephrase-card{border:1px dashed var(--border);border-radius:9px;padding:10px 12px;margin-bottom:10px;background:#FDFDFC;}
+  .rephrase-original{font-size:11.5px;color:var(--muted);font-style:italic;margin-bottom:6px;line-height:1.4;}
+  .rephrase-card textarea{min-height:56px;margin-top:8px;}
+  .responsibility-card{border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin:10px 0;background:#fff;}
+  .responsibility-source{font-size:11.5px;color:var(--muted);line-height:1.45;margin-bottom:7px;}
+  .responsibility-match{font-size:11.5px;color:var(--teal);line-height:1.45;margin:7px 0;}
+  .responsibility-gap{font-size:11.5px;color:var(--danger);line-height:1.45;margin:7px 0;}
+  .ats-tips{margin:14px 0 0;padding-left:18px;}
+  .ats-tips li{font-size:12px;line-height:1.6;color:var(--text);margin-bottom:5px;}
+  .ats-empty{font-size:12px;color:var(--muted);font-style:italic;}
+
+  /* ---------- AUTO-TAILOR ---------- */
+  .tailor-box{margin-top:16px;border-top:1px dashed var(--border);padding-top:14px;}
+  .tailor-title{font-weight:700;font-size:13.5px;color:var(--ink);margin-bottom:3px;}
+  .tailor-sub{font-size:11.5px;color:var(--muted);line-height:1.45;margin-bottom:10px;}
+  .tailor-note{font-size:12px;line-height:1.6;color:var(--text);background:#F4F8F6;border:1px solid #cfe0d9;border-radius:9px;padding:10px 12px;margin:10px 0 0;}
+  mark.tm{background:#FCE9B8;color:inherit;border-radius:3px;padding:0 2px;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="app-header">
+    <div>
+      <p class="eyebrow">ATS-safe · single column · exports as real text</p>
+      <h1>CV Builder</h1>
+      <p>Fill in the panel on the left — your CV updates live on the right.</p>
+    </div>
+    <div class="ats-badge"><span class="dot"></span> Structured for applicant tracking systems</div>
+  </div>
+
+  <div class="workbench">
+
+    <!-- ========== FORM PANE ========== -->
+    <div class="form-pane" id="formPane">
+
+      <div class="import-box" id="importBox">
+        <div class="import-box-head">
+          <span class="import-icon">⇪</span>
+          <div>
+            <div class="import-title">Already have a CV?</div>
+            <div class="import-sub">Upload it (PDF, Word, or plain text) and we'll extract your details straight into the form below.</div>
+          </div>
+        </div>
+        <input type="file" id="cv-file-input" accept=".pdf,.docx,.txt" style="display:none" onchange="handleCvUpload(this.files[0])">
+        <button class="import-btn" type="button" id="importTriggerBtn" onclick="document.getElementById('cv-file-input').click()">Choose file to import</button>
+        <div class="import-status" id="importStatus"></div>
+      </div>
+
+      <div class="section open" data-section="personal">
+        <button class="section-head" type="button"><span><span class="num">1</span>Contact details</span><span class="chev">▾</span></button>
+        <div class="section-body">
+          <label>Full name</label>
+          <input type="text" id="f-name" placeholder="Jane Doe">
+          <label>Target job title / headline</label>
+          <input type="text" id="f-headline" placeholder="Senior Financial Analyst">
+          <div class="row2">
+            <div><label>Email</label><input type="email" id="f-email" placeholder="jane@email.com"></div>
+            <div><label>Phone</label><input type="tel" id="f-phone" placeholder="+265 991 234 567"></div>
+          </div>
+          <div class="row2">
+            <div><label>Location</label><input type="text" id="f-location" placeholder="Lilongwe, Malawi"></div>
+            <div><label>LinkedIn / portfolio</label><input type="text" id="f-link" placeholder="linkedin.com/in/janedoe"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section" data-section="summary">
+        <button class="section-head" type="button"><span><span class="num">2</span>Summary</span><span class="chev">▾</span></button>
+        <div class="section-body">
+          <label>Professional summary</label>
+          <textarea id="f-summary" placeholder="Results-driven analyst with 6+ years turning financial data into decisions that saved..." style="min-height:100px;"></textarea>
+          <p class="hint">2–4 sentences. Lead with years of experience and your strongest, most quantified achievement.</p>
+        </div>
+      </div>
+
+      <div class="section" data-section="skills">
+        <button class="section-head" type="button"><span><span class="num">3</span>Skills</span><span class="chev">▾</span></button>
+        <div class="section-body">
+          <label>Skills (one per line, or comma-separated)</label>
+          <textarea id="f-skills" placeholder="Financial modeling, Variance analysis, SQL, Power BI, Stakeholder reporting" style="min-height:90px;"></textarea>
+          <p class="hint">Match the exact wording used in the job description where you genuinely have the skill — that's what ATS keyword matching looks for. Placing skills early helps automated scans pick them up quickly.</p>
+        </div>
+      </div>
+
+      <div class="section" data-section="experience">
+        <button class="section-head" type="button"><span><span class="num">4</span>Work experience</span><span class="chev">▾</span></button>
+        <div class="section-body">
+          <div id="experience-list"></div>
+          <button class="add-btn" type="button" onclick="addExperience()">+ Add work experience</button>
+        </div>
+      </div>
+
+      <div class="section" data-section="education">
+        <button class="section-head" type="button"><span><span class="num">5</span>Education</span><span class="chev">▾</span></button>
+        <div class="section-body">
+          <div id="education-list"></div>
+          <button class="add-btn" type="button" onclick="addEducation()">+ Add education</button>
+        </div>
+      </div>
+
+      <div class="section" data-section="certifications">
+        <button class="section-head" type="button"><span><span class="num">6</span>Certifications</span><span class="chev">▾</span></button>
+        <div class="section-body">
+          <div id="certifications-list"></div>
+          <button class="add-btn" type="button" onclick="addCertification()">+ Add certification</button>
+        </div>
+      </div>
+
+      <div class="section" data-section="references">
+        <button class="section-head" type="button"><span><span class="num">7</span>References</span><span class="chev">▾</span></button>
+        <div class="section-body">
+          <div class="checkbox-row">
+            <input type="checkbox" id="f-refs-available">
+            <label style="margin:0;">List "Available upon request" instead of names</label>
+          </div>
+          <div id="references-list"></div>
+          <button class="add-btn" type="button" onclick="addReference()">+ Add reference</button>
+        </div>
+      </div>
+
+      <div class="section open" data-section="ats">
+        <button class="section-head" type="button"><span><span class="num">8</span>Optimize CV for a job</span><span class="chev">▾</span></button>
+        <div class="section-body">
+          <label>Job description</label>
+          <textarea id="f-jobdesc" placeholder="Paste the full job description here..." style="min-height:140px;"></textarea>
+          <p class="hint">Paste the vacancy, then analyze your match and tailor your CV using only skills and experience already in your CV.</p>
+          <button class="add-btn" type="button" onclick="runAtsCheck()">Analyze my match</button>
+          <div id="atsResults"></div>
+
+          <div class="tailor-box" id="tailorBox">
+            <div class="tailor-title">Tailor your CV</div>
+            <div class="tailor-sub">Prioritizes matching skills and achievements, highlights relevant wording in the preview, and suggests truthful edits for your summary, responsibilities, and role titles. Nothing is added automatically unless it already exists in your CV or you approve the suggestion.</div>
+            <button class="add-btn" type="button" onclick="tailorCvToJob()">Tailor my CV to this job</button>
+            <button class="add-btn" type="button" onclick="alignJobResponsibilities()">Match job responsibilities to my CV</button>
+            <div id="tailorResults"></div>
+            <div id="responsibilityResults"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ========== PREVIEW PANE ========== -->
+    <div class="preview-pane">
+      <div class="toolbar">
+        <div class="toolbar-row">
+          <div class="toolbar-group">
+            <span class="toolbar-label">Style</span>
+            <div class="swatches" id="swatches"></div>
+          </div>
+          <div class="toolbar-group">
+            <span class="toolbar-label">Accent</span>
+            <div class="accent-picker">
+              <input type="color" id="accent-picker" value="#1B2A4A" onchange="setAccentOverride(this.value)">
+              <button class="reset-link" type="button" onclick="resetAccent()">reset</button>
+            </div>
+          </div>
+          <div class="toolbar-group">
+            <span class="toolbar-label">Density</span>
+            <div class="density-btns" id="densityBtns"></div>
+          </div>
+        </div>
+        <div class="toolbar-row">
+          <span class="hint" style="margin:0;">Every style stays single-column with real text — the visual flair lives in the preview; PDF/Word exports stay clean and parseable.</span>
+          <div class="export-btns">
+            <button class="btn btn-docx" type="button" onclick="exportDocx()">⬇ Word (.docx)</button>
+            <button class="btn btn-pdf" type="button" onclick="exportPdf()">⬇ PDF</button>
+          </div>
+        </div>
+      </div>
+      <div class="paper-wrap">
+        <div class="resume theme-classic density-comfortable" id="resumePreview"></div>
+      </div>
+      <footer class="note">Section order (Contact → Summary → Skills → Experience → Education → Certifications → References) follows standard ATS-parsing best practice.</footer>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ============ DATA MODEL ============ */
+let currentTheme = 'classic';
+let currentDensity = 'comfortable';
+let accentOverride = null;
+let tailorSnapshot = null;
+let tailorActive = false;
+let tailorKeywords = [];
+
+const THEMES = {
+  classic:   { label:'Classic',   chip:'#1B2A4A', heading:'times',   body:'helvetica', accentHex:'1B2A4A', mutedHex:'6B7280', band:false },
+  modern:    { label:'Modern',    chip:'#2F6F62', heading:'helvetica', body:'helvetica', accentHex:'2F6F62', mutedHex:'6B7280', band:false },
+  minimal:   { label:'Minimal',   chip:'#1A1A1A', heading:'helvetica', body:'helvetica', accentHex:'1A1A1A', mutedHex:'9B9B9B', band:false },
+  executive: { label:'Executive', chip:'#101826', heading:'times',   body:'helvetica', accentHex:'6E1E2C', mutedHex:'6B7280', band:'101826' },
+  bold:      { label:'Bold',      chip:'#3B2E7E', heading:'helvetica', body:'helvetica', accentHex:'3B2E7E', mutedHex:'6B7280', band:'accent' },
+  elegant:   { label:'Elegant',   chip:'#A15C57', heading:'times',   body:'helvetica', accentHex:'A15C57', mutedHex:'9B8F8A', band:false }
+};
+const DENSITY = { compact:0.82, comfortable:1, spacious:1.25 };
+
+let data = {
+  name:'', headline:'', email:'', phone:'', location:'', link:'',
+  summary:'', experience:[], skills:'', education:[], certifications:[], references:[], refsAvailable:false
+};
+
+function uid(){ return 'id'+Math.random().toString(36).slice(2,9); }
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function getAccent(){ return accentOverride || THEMES[currentTheme].accentHex; }
+function initialsOf(name){
+  const parts=(name||'').trim().split(/\s+/).filter(Boolean);
+  if(!parts.length) return '—';
+  return (parts[0][0]+(parts[1]?parts[1][0]:'')).toUpperCase();
+}
+
+/* ============ ADD / REMOVE ============ */
+function addExperience(vals){
+  vals = vals || {title:'',company:'',location:'',start:'',end:'',current:false,bullets:''};
+  vals.id = uid(); data.experience.push(vals); renderExperienceForm(); renderPreview();
+}
+function addEducation(vals){
+  vals = vals || {degree:'',institution:'',location:'',start:'',end:'',details:''};
+  vals.id = uid(); data.education.push(vals); renderEducationForm(); renderPreview();
+}
+function addCertification(vals){
+  vals = vals || {name:'',issuer:'',date:''};
+  vals.id = uid(); data.certifications.push(vals); renderCertificationForm(); renderPreview();
+}
+function addReference(vals){
+  vals = vals || {name:'',title:'',company:'',email:'',phone:''};
+  vals.id = uid(); data.references.push(vals); renderReferenceForm(); renderPreview();
+}
+function removeItem(arrName, id){
+  data[arrName] = data[arrName].filter(x=>x.id!==id);
+  ({experience:renderExperienceForm, education:renderEducationForm,
+    certifications:renderCertificationForm, references:renderReferenceForm})[arrName]();
+  renderPreview();
+}
+
+/* ============ FORM RENDERING (built once per add/remove, NOT per keystroke) ============ */
+function renderExperienceForm(){
+  const el = document.getElementById('experience-list');
+  el.innerHTML = data.experience.map((e,i)=>`
+    <div class="entry-card">
+      <div class="entry-card-top">
+        <span class="entry-title">Role ${i+1}</span>
+        <button class="icon-btn" type="button" onclick="removeItem('experience','${e.id}')">✕ Remove</button>
+      </div>
+      <label>Job title</label>
+      <input type="text" value="${esc(e.title)}" placeholder="Senior Financial Analyst" oninput="updateExp('${e.id}','title',this.value)">
+      <div class="row2">
+        <div><label>Company</label><input type="text" value="${esc(e.company)}" placeholder="Acme Corp" oninput="updateExp('${e.id}','company',this.value)"></div>
+        <div><label>Location</label><input type="text" value="${esc(e.location)}" placeholder="Lilongwe" oninput="updateExp('${e.id}','location',this.value)"></div>
+      </div>
+      <div class="row2">
+        <div><label>Start date</label><input type="text" value="${esc(e.start)}" placeholder="Jan 2022" oninput="updateExp('${e.id}','start',this.value)"></div>
+        <div><label>End date</label><input type="text" id="exp-end-${e.id}" value="${esc(e.end)}" placeholder="Present" oninput="updateExp('${e.id}','end',this.value)" ${e.current?'disabled':''}></div>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="exp-current-${e.id}" ${e.current?'checked':''} onchange="updateExp('${e.id}','current',this.checked)">
+        <label style="margin:0;">I currently work here</label>
+      </div>
+      <label>Achievements / responsibilities (one per line)</label>
+      <textarea placeholder="Led a team of 5 analysts to cut month-end close time by 30%" oninput="updateExp('${e.id}','bullets',this.value)">${esc(e.bullets)}</textarea>
+    </div>
+  `).join('') || `<p class="hint">No roles yet — add your most recent job first.</p>`;
+}
+function renderEducationForm(){
+  const el = document.getElementById('education-list');
+  el.innerHTML = data.education.map((e,i)=>`
+    <div class="entry-card">
+      <div class="entry-card-top">
+        <span class="entry-title">Education ${i+1}</span>
+        <button class="icon-btn" type="button" onclick="removeItem('education','${e.id}')">✕ Remove</button>
+      </div>
+      <label>Degree / qualification</label>
+      <input type="text" value="${esc(e.degree)}" placeholder="B.Com in Finance" oninput="updateEdu('${e.id}','degree',this.value)">
+      <div class="row2">
+        <div><label>Institution</label><input type="text" value="${esc(e.institution)}" placeholder="University of Malawi" oninput="updateEdu('${e.id}','institution',this.value)"></div>
+        <div><label>Location</label><input type="text" value="${esc(e.location)}" placeholder="Zomba" oninput="updateEdu('${e.id}','location',this.value)"></div>
+      </div>
+      <div class="row2">
+        <div><label>Start date</label><input type="text" value="${esc(e.start)}" placeholder="2016" oninput="updateEdu('${e.id}','start',this.value)"></div>
+        <div><label>End date</label><input type="text" value="${esc(e.end)}" placeholder="2020" oninput="updateEdu('${e.id}','end',this.value)"></div>
+      </div>
+      <label>Details (optional — honors, relevant coursework)</label>
+      <textarea placeholder="Graduated with distinction" oninput="updateEdu('${e.id}','details',this.value)">${esc(e.details)}</textarea>
+    </div>
+  `).join('') || `<p class="hint">No education entries yet.</p>`;
+}
+function renderCertificationForm(){
+  const el = document.getElementById('certifications-list');
+  el.innerHTML = data.certifications.map((e,i)=>`
+    <div class="entry-card">
+      <div class="entry-card-top">
+        <span class="entry-title">Certification ${i+1}</span>
+        <button class="icon-btn" type="button" onclick="removeItem('certifications','${e.id}')">✕ Remove</button>
+      </div>
+      <label>Certification name</label>
+      <input type="text" value="${esc(e.name)}" placeholder="Certified Financial Modeling & Valuation Analyst" oninput="updateCert('${e.id}','name',this.value)">
+      <div class="row2">
+        <div><label>Issuing organization</label><input type="text" value="${esc(e.issuer)}" placeholder="CFI" oninput="updateCert('${e.id}','issuer',this.value)"></div>
+        <div><label>Date</label><input type="text" value="${esc(e.date)}" placeholder="2023" oninput="updateCert('${e.id}','date',this.value)"></div>
+      </div>
+    </div>
+  `).join('') || `<p class="hint">No certifications yet.</p>`;
+}
+function renderReferenceForm(){
+  const el = document.getElementById('references-list');
+  el.innerHTML = data.references.map((e,i)=>`
+    <div class="entry-card">
+      <div class="entry-card-top">
+        <span class="entry-title">Reference ${i+1}</span>
+        <button class="icon-btn" type="button" onclick="removeItem('references','${e.id}')">✕ Remove</button>
+      </div>
+      <label>Full name</label>
+      <input type="text" value="${esc(e.name)}" placeholder="John Banda" oninput="updateRef('${e.id}','name',this.value)">
+      <div class="row2">
+        <div><label>Job title</label><input type="text" value="${esc(e.title)}" placeholder="Finance Director" oninput="updateRef('${e.id}','title',this.value)"></div>
+        <div><label>Company</label><input type="text" value="${esc(e.company)}" placeholder="Acme Corp" oninput="updateRef('${e.id}','company',this.value)"></div>
+      </div>
+      <div class="row2">
+        <div><label>Email</label><input type="email" value="${esc(e.email)}" placeholder="john@acme.com" oninput="updateRef('${e.id}','email',this.value)"></div>
+        <div><label>Phone</label><input type="tel" value="${esc(e.phone)}" placeholder="+265 999 000 000" oninput="updateRef('${e.id}','phone',this.value)"></div>
+      </div>
+    </div>
+  `).join('') || `<p class="hint">No references added yet.</p>`;
+}
+
+/* ============ FIELD UPDATES — never rebuild the list on keystroke, only touch the model + preview ============ */
+function updateExp(id,field,val){
+  const item = data.experience.find(x=>x.id===id); if(!item) return;
+  item[field]=val;
+  if(field==='current'){
+    const endInput = document.getElementById('exp-end-'+id);
+    if(val){ item.end='Present'; if(endInput){ endInput.value='Present'; endInput.disabled=true; } }
+    else if(endInput){ endInput.disabled=false; }
+  }
+  renderPreview();
+}
+function updateEdu(id,field,val){ const i=data.education.find(x=>x.id===id); if(i){ i[field]=val; renderPreview(); } }
+function updateCert(id,field,val){ const i=data.certifications.find(x=>x.id===id); if(i){ i[field]=val; renderPreview(); } }
+function updateRef(id,field,val){ const i=data.references.find(x=>x.id===id); if(i){ i[field]=val; renderPreview(); } }
+
+/* ============ TOP-LEVEL FIELD BINDINGS ============ */
+['name','headline','email','phone','location','link','summary','skills'].forEach(f=>{
+  document.getElementById('f-'+f).addEventListener('input', e=>{ data[f]=e.target.value; renderPreview(); });
+});
+document.getElementById('f-refs-available').addEventListener('change', e=>{ data.refsAvailable = e.target.checked; renderPreview(); });
+
+/* ============ ACCORDION ============ */
+document.querySelectorAll('.section-head').forEach(btn=>{
+  btn.addEventListener('click', ()=>{ btn.parentElement.classList.toggle('open'); });
+});
+
+/* ============ STYLE / ACCENT / DENSITY CONTROLS ============ */
+function renderSwatches(){
+  const el = document.getElementById('swatches');
+  el.innerHTML = Object.keys(THEMES).map(k=>`
+    <button class="swatch ${k===currentTheme?'active':''}" type="button" onclick="setTheme('${k}')">
+      <span class="chip" style="background:${THEMES[k].chip}"></span>${THEMES[k].label}
+    </button>
+  `).join('');
+}
+function setTheme(t){
+  currentTheme = t;
+  accentOverride = null;
+  document.getElementById('accent-picker').value = '#'+THEMES[t].accentHex;
+  applyThemeClass();
+  renderSwatches();
+  renderPreview();
+}
+function setAccentOverride(hex){ accentOverride = hex.replace('#',''); renderPreview(); }
+function resetAccent(){ accentOverride = null; document.getElementById('accent-picker').value = '#'+THEMES[currentTheme].accentHex; renderPreview(); }
+function applyThemeClass(){
+  const p = document.getElementById('resumePreview');
+  p.className = 'resume theme-'+currentTheme+' density-'+currentDensity;
+}
+function renderDensityBtns(){
+  const el = document.getElementById('densityBtns');
+  el.innerHTML = Object.keys(DENSITY).map(d=>`
+    <button type="button" class="${d===currentDensity?'active':''}" onclick="setDensity('${d}')">${d[0].toUpperCase()+d.slice(1)}</button>
+  `).join('');
+}
+function setDensity(d){ currentDensity=d; applyThemeClass(); renderDensityBtns(); renderPreview(); }
+
+/* ============ PREVIEW RENDERING ============ */
+function bulletsToArray(str){ return (str||'').split('\n').map(s=>s.trim()).filter(Boolean); }
+function skillsToArray(){ return (data.skills||'').split(/[\n,]/).map(s=>s.trim()).filter(Boolean); }
+
+function renderPreview(){
+  const p = document.getElementById('resumePreview');
+  p.style.setProperty('--accent', '#'+getAccent());
+
+  const contactBits = [data.location, data.email, data.phone, data.link].filter(Boolean);
+  const monogram = `<div class="monogram">${esc(initialsOf(data.name))}</div>`;
+  const headerHTML = `
+    <div class="r-headline-row">
+      <div>
+        <p class="r-name">${esc(data.name)||'Your Name'}</p>
+        <p class="r-title">${esc(data.headline)||'Target job title'}</p>
+        <div class="r-contact">${contactBits.map(esc).join(' &nbsp;·&nbsp; ') || '<span class="r-empty">Add contact details</span>'}</div>
+      </div>
+      ${monogram}
+    </div>
+  `;
+
+  const summaryHTML = `<div class="r-sec-title">Summary</div>` + (
+    data.summary ? `<p class="r-summary">${esc(data.summary)}</p>` : `<p class="r-empty">Add a professional summary</p>`
+  );
+
+  const skillsArr = skillsToArray();
+  const skillsHTML = `<div class="r-sec-title">Skills</div>` + (
+    skillsArr.length ? `<div class="r-skills-wrap">${skillsArr.map(s=>`<span class="r-skill">${tailorActive?highlightMatches(s,tailorKeywords):esc(s)}</span>`).join('')}</div>`
+    : `<p class="r-empty">Add your key skills</p>`
+  );
+
+  const expHTML = `<div class="r-sec-title">Work Experience</div>` + (
+    data.experience.length ? data.experience.map(e=>`
+      <div class="r-item">
+        <div class="r-item-toprow">
+          <span class="r-item-title">${esc(e.title)||'Job title'}${e.company?(' — '+esc(e.company)):''}</span>
+          <span class="r-item-date">${esc(e.start)}${e.start||e.end?' – ':''}${esc(e.end)}</span>
+        </div>
+        <div class="r-item-sub">${esc(e.location)}</div>
+        <ul class="r-bullets">${bulletsToArray(e.bullets).map(b=>`<li>${tailorActive?highlightMatches(b,tailorKeywords):esc(b)}</li>`).join('')}</ul>
+      </div>
+    `).join('') : `<p class="r-empty">Add your work history</p>`
+  );
+
+  const eduHTML = `<div class="r-sec-title">Education</div>` + (
+    data.education.length ? data.education.map(e=>`
+      <div class="r-item">
+        <div class="r-item-toprow">
+          <span class="r-item-title">${esc(e.degree)||'Degree'}</span>
+          <span class="r-item-date">${esc(e.start)}${e.start||e.end?' – ':''}${esc(e.end)}</span>
+        </div>
+        <div class="r-item-sub">${esc(e.institution)}${e.location?(', '+esc(e.location)):''}</div>
+        ${e.details?`<p class="r-summary" style="margin-top:4px;">${esc(e.details)}</p>`:''}
+      </div>
+    `).join('') : `<p class="r-empty">Add your education</p>`
+  );
+
+  const certHTML = `<div class="r-sec-title">Certifications</div>` + (
+    data.certifications.length ? data.certifications.map(e=>`
+      <div class="r-item">
+        <div class="r-item-toprow">
+          <span class="r-item-title">${esc(e.name)||'Certification'}</span>
+          <span class="r-item-date">${esc(e.date)}</span>
+        </div>
+        <div class="r-item-sub">${esc(e.issuer)}</div>
+      </div>
+    `).join('') : `<p class="r-empty">Add certifications (optional)</p>`
+  );
+
+  let refHTML;
+  if(data.refsAvailable){
+    refHTML = `<div class="r-sec-title">References</div><p class="r-summary">Available upon request.</p>`;
+  } else {
+    refHTML = `<div class="r-sec-title">References</div>` + (
+      data.references.length ? `<div class="r-ref-grid">${data.references.map(e=>`
+        <div class="r-item">
+          <div class="r-item-title">${esc(e.name)||'Name'}</div>
+          <div class="r-item-sub">${[e.title,e.company].filter(Boolean).map(esc).join(', ')}</div>
+          <div class="r-item-date" style="font-family:'Inter',sans-serif;">${[e.email,e.phone].filter(Boolean).map(esc).join(' · ')}</div>
+        </div>
+      `).join('')}</div>` : `<p class="r-empty">Add references or check "available upon request"</p>`
+    );
+  }
+
+  const bodyInner = summaryHTML+skillsHTML+expHTML+eduHTML+certHTML+refHTML;
+
+  if(currentTheme==='executive' || currentTheme==='bold'){
+    p.innerHTML = `<div class="r-header-band">${headerHTML}</div><div class="r-body">${bodyInner}</div>`;
+  } else {
+    p.innerHTML = headerHTML + bodyInner;
+  }
+}
+
+/* ============ PDF EXPORT (text-based, ATS-safe) ============ */
+function hexToRgb(hex){ const n=parseInt(hex,16); return [(n>>16)&255,(n>>8)&255,n&255]; }
+
+function exportPdf(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'pt', format:'a4' });
+  const theme = THEMES[currentTheme];
+  const accentHex = getAccent();
+  const pageW = doc.internal.pageSize.getWidth();
+  const marginX = 54;
+  const maxW = pageW - marginX*2;
+  const dFactor = DENSITY[currentDensity];
+  let y = 56;
+  const accent = hexToRgb(accentHex);
+  const muted = hexToRgb(theme.mutedHex);
+  const dark = [30,37,51];
+
+  function ensureRoom(h){ if(y+h > doc.internal.pageSize.getHeight()-50){ doc.addPage(); y=56; } }
+  function setColor(rgb){ doc.setTextColor(rgb[0],rgb[1],rgb[2]); }
+  function line(x1,yv,x2){ doc.setDrawColor(accent[0],accent[1],accent[2]); doc.line(x1,yv,x2,yv); }
+
+  if(theme.band){
+    const bandRgb = theme.band==='accent' ? accent : hexToRgb(theme.band);
+    doc.setFillColor(bandRgb[0],bandRgb[1],bandRgb[2]);
+    doc.rect(0,0,pageW,96,'F');
+    doc.setFont(theme.heading,'bold'); doc.setFontSize(22); doc.setTextColor(255,255,255);
+    doc.text(data.name||'Your Name', marginX, 42);
+    doc.setFont(theme.body,'normal'); doc.setFontSize(11); doc.setTextColor(225,225,235);
+    doc.text(data.headline||'', marginX, 60);
+    doc.setFontSize(9.5); doc.setTextColor(215,215,225);
+    doc.text([data.location,data.email,data.phone,data.link].filter(Boolean).join('   ·   '), marginX, 78);
+    y = 122;
+  } else {
+    doc.setFont(theme.heading,'bold'); doc.setFontSize(22); setColor(currentTheme==='minimal'?[26,26,26]:accent);
+    doc.text(data.name||'Your Name', marginX, y); y+=20;
+    doc.setFont(theme.body,'normal'); doc.setFontSize(11); doc.setTextColor(74,85,104);
+    doc.text(data.headline||'', marginX, y); y+=16;
+    doc.setFontSize(9.5); doc.setTextColor(muted[0],muted[1],muted[2]);
+    doc.text([data.location,data.email,data.phone,data.link].filter(Boolean).join('   ·   '), marginX, y); y+=18*dFactor;
+  }
+
+  function sectionTitle(title){
+    ensureRoom(26); y+=10*dFactor;
+    doc.setFont(theme.heading,'bold'); doc.setFontSize(11.5); setColor(currentTheme==='minimal'?[26,26,26]:accent);
+    doc.text(title.toUpperCase(), marginX, y); y+=4;
+    line(marginX,y,pageW-marginX); y+=14*dFactor;
+  }
+  function bodyText(text, size, color, opts){
+    opts = opts||{};
+    doc.setFont(theme.body, opts.bold?'bold':'normal'); doc.setFontSize(size); setColor(color);
+    const lines = doc.splitTextToSize(text, maxW-(opts.indent||0));
+    lines.forEach(ln=>{ ensureRoom(size*1.3); doc.text(ln, marginX+(opts.indent||0), y); y+=size*1.35*dFactor; });
+  }
+
+  sectionTitle('Summary');
+  bodyText(data.summary || '—', 10.2, dark);
+
+  sectionTitle('Skills');
+  const skillsArr = skillsToArray();
+  bodyText(skillsArr.length ? skillsArr.join('   ·   ') : '—', 10.2, dark);
+
+  sectionTitle('Work Experience');
+  if(!data.experience.length) bodyText('—',10.2,dark);
+  data.experience.forEach(e=>{
+    ensureRoom(30);
+    doc.setFont(theme.body,'bold'); doc.setFontSize(11); setColor(dark);
+    doc.text([e.title,e.company].filter(Boolean).join(' — '), marginX, y);
+    doc.setFont(theme.body,'normal'); doc.setFontSize(9.5); setColor(muted);
+    doc.text([e.start,e.end].filter(Boolean).join(' \u2013 '), pageW-marginX, y, {align:'right'});
+    y+=13*dFactor;
+    if(e.location){ doc.setFont(theme.body,'italic'); doc.setFontSize(9.5); setColor(muted); doc.text(e.location, marginX, y); y+=12*dFactor; }
+    bulletsToArray(e.bullets).forEach(b=>{
+      doc.setFont(theme.body,'normal'); doc.setFontSize(9.8); setColor(dark);
+      const lines = doc.splitTextToSize('• '+b, maxW-10);
+      lines.forEach(ln=>{ ensureRoom(13); doc.text(ln, marginX+8, y); y+=13*dFactor; });
+    });
+    y+=6*dFactor;
+  });
+
+  sectionTitle('Education');
+  if(!data.education.length) bodyText('—',10.2,dark);
+  data.education.forEach(e=>{
+    ensureRoom(26);
+    doc.setFont(theme.body,'bold'); doc.setFontSize(11); setColor(dark);
+    doc.text(e.degree||'', marginX, y);
+    doc.setFont(theme.body,'normal'); doc.setFontSize(9.5); setColor(muted);
+    doc.text([e.start,e.end].filter(Boolean).join(' \u2013 '), pageW-marginX, y, {align:'right'});
+    y+=13*dFactor;
+    const sub = [e.institution,e.location].filter(Boolean).join(', ');
+    if(sub){ setColor(muted); doc.setFontSize(9.5); doc.text(sub, marginX, y); y+=12*dFactor; }
+    if(e.details){ bodyText(e.details, 9.8, dark); }
+    y+=4*dFactor;
+  });
+
+  sectionTitle('Certifications');
+  if(!data.certifications.length) bodyText('—',10.2,dark);
+  data.certifications.forEach(e=>{
+    ensureRoom(20);
+    doc.setFont(theme.body,'bold'); doc.setFontSize(10.5); setColor(dark);
+    doc.text(e.name||'', marginX, y);
+    doc.setFont(theme.body,'normal'); doc.setFontSize(9.5); setColor(muted);
+    doc.text(e.date||'', pageW-marginX, y, {align:'right'});
+    y+=12*dFactor;
+    if(e.issuer){ doc.text(e.issuer, marginX, y); y+=14*dFactor; } else { y+=6*dFactor; }
+  });
+
+  sectionTitle('References');
+  if(data.refsAvailable){ bodyText('Available upon request.', 10.2, dark); }
+  else if(!data.references.length){ bodyText('—', 10.2, dark); }
+  else {
+    data.references.forEach(e=>{
+      ensureRoom(30);
+      doc.setFont(theme.body,'bold'); doc.setFontSize(10.5); setColor(dark);
+      doc.text(e.name||'', marginX, y); y+=12*dFactor;
+      doc.setFont(theme.body,'normal'); doc.setFontSize(9.5); setColor(muted);
+      const sub = [e.title,e.company].filter(Boolean).join(', ');
+      if(sub){ doc.text(sub, marginX, y); y+=12*dFactor; }
+      const contact = [e.email,e.phone].filter(Boolean).join('   ·   ');
+      if(contact){ doc.text(contact, marginX, y); y+=12*dFactor; }
+      y+=6*dFactor;
+    });
+  }
+
+  const fname = (data.name||'CV').trim().replace(/\s+/g,'_');
+  doc.save(`${fname}_CV.pdf`);
+}
+
+/* ============ WORD (.docx) EXPORT ============ */
+async function exportDocx(){
+  if(!window.docx){ alert('The Word export library did not load — check your internet connection and try again.'); return; }
+  const { Document, Packer, Paragraph, TextRun, BorderStyle } = window.docx;
+  const theme = THEMES[currentTheme];
+  const accentColor = getAccent();
+  const mutedColor = theme.mutedHex;
+  const headingFont = theme.heading==='times' ? 'Times New Roman' : 'Calibri';
+  const bodyFont = 'Calibri';
+  const dFactor = DENSITY[currentDensity];
+  const sp = (base)=> Math.round(base*dFactor);
+
+  const children = [];
+
+  children.push(new Paragraph({
+    children:[ new TextRun({ text:data.name||'Your Name', bold:true, size:44, font:headingFont, color:accentColor }) ],
+    spacing:{after:60}
+  }));
+  children.push(new Paragraph({
+    children:[ new TextRun({ text:data.headline||'', size:22, font:bodyFont, color:'444444' }) ],
+    spacing:{after:60}
+  }));
+  children.push(new Paragraph({
+    children:[ new TextRun({ text:[data.location,data.email,data.phone,data.link].filter(Boolean).join('   ·   '), size:18, font:bodyFont, color:mutedColor }) ],
+    spacing:{after:200}
+  }));
+
+  function sectionHeading(text){
+    children.push(new Paragraph({
+      children:[ new TextRun({ text:text.toUpperCase(), bold:true, size:22, font:headingFont, color:accentColor }) ],
+      spacing:{before:sp(200), after:sp(80)},
+      border:{ bottom:{ color:accentColor, space:2, style:BorderStyle.SINGLE, size:6 } }
+    }));
+  }
+  function para(text, opts){
+    opts = opts||{};
+    children.push(new Paragraph({
+      children:[ new TextRun({ text:text||'—', size:opts.size||20, font:bodyFont, italics:opts.italic||false, bold:opts.bold||false, color:opts.color||'2B2E33' }) ],
+      spacing:{after: opts.after!==undefined ? sp(opts.after) : sp(60)},
+      bullet: opts.bullet ? {level:0} : undefined
+    }));
+  }
+  function twoCol(left, right){
+    children.push(new Paragraph({
+      children:[
+        new TextRun({ text:left||'', bold:true, size:21, font:bodyFont }),
+        new TextRun({ text:'\t'+(right||''), size:18, font:bodyFont, color:mutedColor })
+      ],
+      tabStops:[{ type:'right', position:9026 }],
+      spacing:{after:20}
+    }));
+  }
+
+  sectionHeading('Summary');
+  para(data.summary, {after:180});
+
+  sectionHeading('Skills');
+  para(skillsToArray().join('   ·   '), {after:180});
+
+  sectionHeading('Work Experience');
+  if(!data.experience.length) para('');
+  data.experience.forEach(e=>{
+    twoCol([e.title,e.company].filter(Boolean).join(' — '), [e.start,e.end].filter(Boolean).join(' – '));
+    if(e.location) para(e.location, {italic:true, size:18, color:mutedColor, after:20});
+    bulletsToArray(e.bullets).forEach(b=> para(b,{bullet:true, size:19, after:20}) );
+    children.push(new Paragraph({text:'', spacing:{after:sp(100)}}));
+  });
+
+  sectionHeading('Education');
+  if(!data.education.length) para('');
+  data.education.forEach(e=>{
+    twoCol(e.degree, [e.start,e.end].filter(Boolean).join(' – '));
+    const sub = [e.institution,e.location].filter(Boolean).join(', ');
+    if(sub) para(sub, {size:18, color:mutedColor, after:20});
+    if(e.details) para(e.details, {size:19, after:20});
+    children.push(new Paragraph({text:'', spacing:{after:sp(80)}}));
+  });
+
+  sectionHeading('Certifications');
+  if(!data.certifications.length) para('');
+  data.certifications.forEach(e=>{
+    twoCol(e.name, e.date);
+    if(e.issuer) para(e.issuer, {size:18, color:mutedColor, after:60});
+  });
+
+  sectionHeading('References');
+  if(data.refsAvailable){ para('Available upon request.'); }
+  else if(!data.references.length){ para(''); }
+  else {
+    data.references.forEach(e=>{
+      para(e.name, {bold:true, size:20, after:15});
+      const sub = [e.title,e.company].filter(Boolean).join(', ');
+      if(sub) para(sub, {size:18, color:mutedColor, after:15});
+      const contact = [e.email,e.phone].filter(Boolean).join('   ·   ');
+      if(contact) para(contact, {size:18, color:mutedColor, after:80});
+    });
+  }
+
+  try{
+    const doc = new Document({ sections:[{ properties:{}, children }] });
+    const blob = await Packer.toBlob(doc);
+    const fname = (data.name||'CV').trim().replace(/\s+/g,'_');
+    saveAs(blob, `${fname}_CV.docx`);
+  }catch(err){
+    console.error(err);
+    alert('Something went wrong generating the Word file. Please try again.');
+  }
+}
+
+/* ============ CV IMPORT / PARSING ============ */
+if(window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+async function handleCvUpload(file){
+  if(!file) return;
+  const statusEl = document.getElementById('importStatus');
+  const btn = document.getElementById('importTriggerBtn');
+  statusEl.className = 'import-status';
+  statusEl.textContent = 'Reading file…';
+  btn.disabled = true;
+  try{
+    const name = file.name.toLowerCase();
+    let text = '';
+    if(name.endsWith('.pdf')){
+      if(!window.pdfjsLib){ throw new Error('PDF reader did not load — check your internet connection.'); }
+      text = await extractPdfText(file);
+    } else if(name.endsWith('.docx')){
+      if(!window.mammoth){ throw new Error('Word reader did not load — check your internet connection.'); }
+      text = await extractDocxText(file);
+    } else if(name.endsWith('.txt')){
+      text = await file.text();
+    } else {
+      statusEl.className = 'import-status err';
+      statusEl.textContent = 'Please upload a .pdf, .docx, or .txt file.';
+      btn.disabled = false;
+      return;
+    }
+    if(!text || !text.trim()){
+      statusEl.className = 'import-status err';
+      statusEl.textContent = "Couldn't find readable text in that file — it may be a scanned image. Try a different export, or fill the form manually.";
+      btn.disabled = false;
+      return;
+    }
+    const parsed = parseResumeText(text);
+    applyParsedData(parsed);
+    statusEl.className = 'import-status ok';
+    statusEl.textContent = 'Imported — please review every section below, since automatic extraction is never perfect.';
+  }catch(err){
+    console.error(err);
+    statusEl.className = 'import-status err';
+    statusEl.textContent = err.message || 'Something went wrong reading that file. Please try again or fill the form manually.';
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+async function extractPdfText(file){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  const lines = [];
+  for(let p=1;p<=pdf.numPages;p++){
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    let lastY = null, line = [];
+    content.items.forEach(item=>{
+      const y = item.transform[5];
+      if(lastY!==null && Math.abs(y-lastY)>4){
+        lines.push(line.join(' '));
+        line = [];
+      }
+      line.push(item.str);
+      lastY = y;
+    });
+    if(line.length) lines.push(line.join(' '));
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
+async function extractDocxText(file){
+  const buf = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({arrayBuffer:buf});
+  return result.value;
+}
+
+const SECTION_PATTERNS = {
+  summary: /^(summary|profile|objective|about me|professional summary|personal statement)\s*:?$/i,
+  skills: /^(skills|technical skills|core competencies|key skills|areas of expertise|competencies)\s*:?$/i,
+  experience: /^(experience|work experience|employment history|professional experience|work history|career history)\s*:?$/i,
+  education: /^(education|academic background|academic qualifications|educational background)\s*:?$/i,
+  certifications: /^(certifications?|licenses?( & certifications?)?|certificates)\s*:?$/i,
+  references: /^references\s*:?$/i
+};
+
+const DATE_RANGE_RE = /((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s*\d{4}|\d{4})\s*(?:-|–|—|to)\s*((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s*\d{4}|present|current|now|\d{4})/i;
+
+function isSectionHeaderLine(line){
+  const t = line.trim();
+  if(!t) return false;
+  return Object.values(SECTION_PATTERNS).some(re=>re.test(t));
+}
+
+function splitIntoSections(rawLines){
+  const result = {};
+  let current = null;
+  rawLines.forEach(line=>{
+    const trimmed = line.trim();
+    const matchedKey = trimmed && Object.keys(SECTION_PATTERNS).find(k=>SECTION_PATTERNS[k].test(trimmed));
+    if(matchedKey){ current = matchedKey; result[current] = result[current] || []; return; }
+    if(current){ result[current].push(line); }
+  });
+  return result;
+}
+
+function blocksFromLines(lines){
+  const blocks = []; let cur = [];
+  lines.forEach(l=>{
+    if(l.trim()===''){
+      if(cur.length){ blocks.push(cur); cur = []; }
+    } else cur.push(l.trim());
+  });
+  if(cur.length) blocks.push(cur);
+  return blocks;
+}
+
+function splitTitleLine(line){
+  return line.split(/ — | – | -- | - |\||,/).map(s=>s.trim()).filter(Boolean);
+}
+
+function parseSkills(lines){
+  if(!lines.length) return '';
+  const joined = lines.join('\n');
+  const parts = joined.split(/[\n,•|·]+/).map(s=>s.trim()).filter(Boolean);
+  return parts.join('\n');
+}
+
+function parseExperience(lines){
+  const blocks = blocksFromLines(lines);
+  return blocks.map(block=>{
+    const dateIdx = block.findIndex(l=>DATE_RANGE_RE.test(l));
+    let start='', end='', current=false;
+    if(dateIdx!==-1){
+      const m = block[dateIdx].match(DATE_RANGE_RE);
+      start = m[1];
+      if(/present|current|now/i.test(m[2])){ current = true; end = 'Present'; }
+      else end = m[2];
+    }
+    let titleLine = block[0] || '';
+    if(dateIdx===0) titleLine = titleLine.replace(DATE_RANGE_RE,'').trim();
+    const parts = splitTitleLine(titleLine);
+    let title='', company='', location='';
+    if(parts.length>=2){ title=parts[0]; company=parts[1]; if(parts[2]) location=parts[2]; }
+    else { title = titleLine; }
+    const bulletLines = block.filter((l,i)=> i!==0 && i!==dateIdx).map(l=>l.replace(/^[•\-*●▪‣]+\s*/,''));
+    return { title, company, location, start, end, current, bullets: bulletLines.join('\n') };
+  }).filter(e=> e.title || e.company || e.bullets);
+}
+
+function parseEducation(lines){
+  const blocks = blocksFromLines(lines);
+  return blocks.map(block=>{
+    const dateIdx = block.findIndex(l=>DATE_RANGE_RE.test(l));
+    let start='', end='';
+    if(dateIdx!==-1){
+      const m = block[dateIdx].match(DATE_RANGE_RE);
+      start = m[1];
+      end = /present|current|now/i.test(m[2]) ? 'Present' : m[2];
+    }
+    let degreeLine = block[0] || '';
+    if(dateIdx===0) degreeLine = degreeLine.replace(DATE_RANGE_RE,'').trim();
+    const parts = splitTitleLine(degreeLine);
+    let degree='', institution='', location='';
+    if(parts.length>=2){ degree=parts[0]; institution=parts[1]; if(parts[2]) location=parts[2]; }
+    else degree = degreeLine;
+    const detailLines = block.filter((l,i)=> i!==0 && i!==dateIdx);
+    return { degree, institution, location, start, end, details: detailLines.join(' ') };
+  }).filter(e=> e.degree || e.institution);
+}
+
+function parseCertifications(lines){
+  return lines.map(l=>l.trim()).filter(Boolean).map(l=>{
+    const parts = splitTitleLine(l);
+    let name = parts[0] || l, issuer = parts[1] || '', date = '';
+    const dm = l.match(/(19|20)\d{2}/);
+    if(dm) date = dm[0];
+    return { name, issuer, date };
+  });
+}
+
+function parseResumeText(raw){
+  const rawLines = raw.split(/\r?\n/).map(l=>l.replace(/[ \t]+/g,' ').trim());
+  const nonEmpty = rawLines.filter(l=>l.length>0);
+
+  const emailMatch = raw.match(/[\w.+-]+@[\w-]+\.[a-z]{2,}/i);
+  const phoneMatch = raw.match(/(\+?\d[\d\s().-]{7,}\d)/);
+  const linkMatch = raw.match(/(https?:\/\/[^\s,)]+|(?:www\.)?linkedin\.com\/[^\s,)]+)/i);
+
+  let name = '';
+  for(let i=0;i<Math.min(nonEmpty.length,6);i++){
+    const l = nonEmpty[i];
+    if(emailMatch && l.includes(emailMatch[0])) continue;
+    if(phoneMatch && l.includes(phoneMatch[0])) continue;
+    if(/@|linkedin|http/i.test(l)) continue;
+    if(isSectionHeaderLine(l)) continue;
+    const words = l.split(' ').filter(Boolean);
+    if(words.length>=1 && words.length<=5 && !/\d{3,}/.test(l)){ name = l; break; }
+  }
+
+  let headline = '';
+  const nameIdx = nonEmpty.indexOf(name);
+  if(nameIdx!==-1 && nonEmpty[nameIdx+1]){
+    const cand = nonEmpty[nameIdx+1];
+    if(cand.length<70 && !/@|linkedin|http|\d{3,}/i.test(cand) && !isSectionHeaderLine(cand)) headline = cand;
+  }
+
+  let location = '';
+  const locLine = nonEmpty.slice(0,8).find(l=> /,/.test(l) && l.length<50 && !/@|http/i.test(l) && l!==name && l!==headline && !isSectionHeaderLine(l));
+  if(locLine) location = locLine;
+
+  const sections = splitIntoSections(rawLines);
+  const summary = (sections.summary||[]).map(l=>l.trim()).filter(Boolean).join(' ').trim();
+  const skills = parseSkills(sections.skills||[]);
+  const experience = parseExperience(sections.experience||[]);
+  const education = parseEducation(sections.education||[]);
+  const certifications = parseCertifications(sections.certifications||[]);
+
+  return {
+    name, headline,
+    email: emailMatch ? emailMatch[0] : '',
+    phone: phoneMatch ? phoneMatch[0].trim() : '',
+    location, link: linkMatch ? linkMatch[0] : '',
+    summary, skills, experience, education, certifications
+  };
+}
+
+function applyParsedData(parsed){
+  ['name','headline','email','phone','location','link','summary'].forEach(f=>{
+    if(parsed[f]){
+      data[f] = parsed[f];
+      const el = document.getElementById('f-'+f);
+      if(el) el.value = parsed[f];
+    }
+  });
+  if(parsed.skills){
+    data.skills = parsed.skills;
+    document.getElementById('f-skills').value = parsed.skills;
+  }
+  if(parsed.experience && parsed.experience.length){
+    data.experience = parsed.experience.map(e=>({...e, id:uid()}));
+    renderExperienceForm();
+  }
+  if(parsed.education && parsed.education.length){
+    data.education = parsed.education.map(e=>({...e, id:uid()}));
+    renderEducationForm();
+  }
+  if(parsed.certifications && parsed.certifications.length){
+    data.certifications = parsed.certifications.map(e=>({...e, id:uid()}));
+    renderCertificationForm();
+  }
+  renderPreview();
+  document.querySelectorAll('.section').forEach(s=>s.classList.add('open'));
+}
+
+/* ============ ATS MATCH CHECK ============ */
+const ATS_STOPWORDS = new Set(("a an the and or but if then so to of in on at for with without within into onto from by as is are was were be been being this that these those you your yours we our ours they their them he she it its his her i me my mine us will would can could should shall may might must not no nor do does did doing have has had having able ability strong excellent good great highly proven demonstrated including includes include job role position work working team teams company companies across ensure ensuring responsible responsibilities requirements required experience years year plus preferred candidate candidates applicant apply application looking seeking join opportunity opportunities please note about who what where when why how all any each every more most other such only own same than too very just also both few new use used using per etc").split(/\s+/));
+
+function tokenize(text){
+  const raw = text.toLowerCase().match(/[a-z][a-z+.#-]{1,}/g) || [];
+  return raw.map(w=> w.replace(/^[.\-]+|[.\-]+$/g,'')).filter(Boolean);
+}
+
+/* Light stemmer so "managing"/"managed"/"manager" all match "management", etc.
+   Deliberately conservative — this is for finding genuine overlap, not for
+   inflating a score with false positives. */
+function stem(w){
+  w = (w||'').toLowerCase();
+  if(w.length>6 && w.endsWith('ies')) return w.slice(0,-3)+'y';
+  if(w.length>6 && w.endsWith('ing')) return w.slice(0,-3);
+  if(w.length>5 && w.endsWith('ers')) return w.slice(0,-3);
+  if(w.length>5 && w.endsWith('er')) return w.slice(0,-2);
+  if(w.length>5 && w.endsWith('ed')) return w.slice(0,-2);
+  if(w.length>5 && w.endsWith('es')) return w.slice(0,-2);
+  if(w.length>4 && w.endsWith('s') && !w.endsWith('ss')) return w.slice(0,-1);
+  return w;
+}
+
+function extractJdKeywords(jd){
+  const rawWords = tokenize(jd);
+  const words = rawWords.filter(w=> w.length>2 && !ATS_STOPWORDS.has(w));
+  const freq = {};
+  words.forEach(w=> freq[w]=(freq[w]||0)+1);
+
+  const bigramFreq = {};
+  for(let i=0;i<rawWords.length-1;i++){
+    const a=rawWords[i], b=rawWords[i+1];
+    if(a.length<3 || b.length<3 || ATS_STOPWORDS.has(a) || ATS_STOPWORDS.has(b)) continue;
+    const bg = a+' '+b;
+    bigramFreq[bg] = (bigramFreq[bg]||0)+1;
+  }
+  const bigrams = Object.entries(bigramFreq).filter(([,c])=>c>=2).map(([k])=>k);
+  const used = new Set();
+  bigrams.forEach(bg=> bg.split(' ').forEach(w=>used.add(w)));
+  const singles = Object.entries(freq).sort((a,b)=>b[1]-a[1]).map(([k])=>k).filter(w=>!used.has(w));
+
+  return [...bigrams, ...singles].slice(0,28);
+}
+
+function resumeFullText(){
+  const expText = data.experience.map(e=>[e.title,e.company,e.bullets].join(' ')).join(' ');
+  const eduText = data.education.map(e=>[e.degree,e.institution,e.details].join(' ')).join(' ');
+  const certText = data.certifications.map(e=>[e.name,e.issuer].join(' ')).join(' ');
+  return [data.headline,data.summary,data.skills,expText,eduText,certText].join(' ').toLowerCase();
+}
+
+function resumeStemmedTokenSet(){
+  return new Set(tokenize(resumeFullText()).map(stem));
+}
+
+/* A keyword "matches" if either the literal phrase appears, or every word in it
+   has a stemmed counterpart somewhere in the resume — so genuinely-held skills
+   phrased differently (tense, plural, "-er"/"-ing" forms) still count. */
+function keywordMatches(keyword, fullText, stemmedSet){
+  if(fullText.includes(keyword)) return true;
+  const words = keyword.split(' ').filter(Boolean);
+  return words.length>0 && words.every(w=> stemmedSet.has(stem(w)));
+}
+
+function scoreColor(score){
+  if(score>=70) return '#2F6F62';
+  if(score>=40) return '#C08A2E';
+  return '#B3491F';
+}
+
+function buildAtsTips(missing){
+  const tips = [];
+  if(missing.length){
+    tips.push(`Where accurate, weave in terms like ${missing.slice(0,5).join(', ')} — mirror the job description's exact wording.`);
+  }
+  const allBullets = data.experience.flatMap(e=>bulletsToArray(e.bullets));
+  const withNumbers = allBullets.filter(b=>/\d/.test(b)).length;
+  if(allBullets.length && withNumbers/allBullets.length < 0.4){
+    tips.push('Quantify more achievements with numbers, percentages, or amounts — measurable impact scores well with both ATS and recruiters.');
+  }
+  if(!data.email || !data.phone){
+    tips.push('Fill in both an email and a phone number — some ATS platforms reject applications missing either.');
+  }
+  if(!data.summary){
+    tips.push('Add a short professional summary — it is one of the highest-weighted sections for keyword scanning.');
+  }
+  tips.push("Only add a keyword if you can genuinely speak to it in an interview — matching only helps when it's true.");
+  return tips;
+}
+
+function renderAtsResults(score, matched, missing, tips){
+  const color = scoreColor(score);
+  const circumference = 2*Math.PI*36;
+  const offset = circumference - (score/100)*circumference;
+  const label = score>=70 ? 'Strong match with this job description.' : score>=40 ? 'Partial match — a few gaps worth closing.' : 'Low match — the CV and job description use different language.';
+  return `
+    <div class="ats-score-wrap">
+      <div class="ats-score-ring">
+        <svg width="84" height="84" viewBox="0 0 84 84">
+          <circle cx="42" cy="42" r="36" fill="none" stroke="#EDEBE4" stroke-width="8"/>
+          <circle cx="42" cy="42" r="36" fill="none" stroke="${color}" stroke-width="8"
+            stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" stroke-linecap="round"/>
+        </svg>
+        <div class="ats-score-num" style="color:${color}">${score}%</div>
+      </div>
+      <div class="ats-score-label">${label}</div>
+    </div>
+    <div class="kw-group-title">Matched keywords (${matched.length})</div>
+    <div class="kw-wrap">${matched.length ? matched.map(k=>`<span class="kw-chip matched">${esc(k)}</span>`).join('') : '<span class="ats-empty">No overlap found yet.</span>'}</div>
+    <div class="kw-group-title">Missing — tick only what's genuinely true (${missing.length})</div>
+    ${missing.length ? `
+      <div class="kw-check-wrap">${missing.map((k,i)=>`
+        <label class="kw-check"><input type="checkbox" data-missing-kw="${esc(k)}"> ${esc(k)}</label>
+      `).join('')}</div>
+      <p class="hint" style="margin-top:6px;">Tick a term only if you can back it up in an interview, then add it to your skills. Ticking things you can't actually do won't raise a real score — it just adds risk once someone reads past the scan.</p>
+      <button class="add-btn" type="button" onclick="addCheckedMissingKeywords()">+ Add ticked terms to my skills</button>
+    ` : '<span class="ats-empty">No obvious gaps found.</span>'}
+    <ul class="ats-tips">${tips.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>
+  `;
+}
+
+function addCheckedMissingKeywords(){
+  const boxes = document.querySelectorAll('[data-missing-kw]:checked');
+  if(!boxes.length) return;
+  const toAdd = [...boxes].map(b=> b.getAttribute('data-missing-kw'));
+  const existing = skillsToArray();
+  const existingLower = new Set(existing.map(s=>s.toLowerCase()));
+  const newOnes = toAdd.filter(k=> !existingLower.has(k.toLowerCase()));
+  if(!newOnes.length) return;
+  const sep = /\n/.test(data.skills) ? '\n' : ', ';
+  data.skills = [...existing, ...newOnes].join(sep);
+  document.getElementById('f-skills').value = data.skills;
+  renderPreview();
+  runAtsCheck();
+}
+
+function runAtsCheck(){
+  const jd = document.getElementById('f-jobdesc').value.trim();
+  const resultsEl = document.getElementById('atsResults');
+  if(!jd){
+    resultsEl.innerHTML = `<p class="ats-empty">Paste a job description above, then check again.</p>`;
+    return;
+  }
+  const keywords = extractJdKeywords(jd);
+  const resumeText = resumeFullText();
+  const stemmedSet = resumeStemmedTokenSet();
+  const matched = [], missing = [];
+  keywords.forEach(k=>{ (keywordMatches(k, resumeText, stemmedSet) ? matched : missing).push(k); });
+  const score = keywords.length ? Math.round((matched.length/keywords.length)*100) : 0;
+  const tips = buildAtsTips(missing);
+  resultsEl.innerHTML = renderAtsResults(score, matched, missing, tips);
+}
+
+/* ============ AUTO-TAILOR TO JOB ============ */
+function countKeywordHits(text, keywords){
+  const low = (text||'').toLowerCase();
+  return keywords.reduce((n,k)=> n + (low.includes(k) ? 1 : 0), 0);
+}
+
+function extractJdTitle(jd){
+  const lines = jd.split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!lines.length) return '';
+  for(const l of lines.slice(0,6)){
+    const m = l.match(/^(job title|title|position|role)\s*[:\-]\s*(.+)$/i);
+    if(m) return m[2].trim();
+  }
+  const first = lines[0];
+  if(first.length<=70 && !/[.:]$/.test(first)) return first;
+  return '';
+}
+
+function buildSuggestedSummary(jd, keywords){
+  const title = extractJdTitle(jd) || data.headline || 'this role';
+  const top = keywords.slice(0,4);
+  const existing = (data.summary||'').trim();
+  const lead = existing ? existing.replace(/\.\s*$/,'') + '. ' : '';
+  const kwPhrase = top.length
+    ? `Background aligned with ${title}, with hands-on strength in ${top.join(', ')}.`
+    : `Background aligned with ${title}.`;
+  return (lead + kwPhrase).trim();
+}
+
+function extractJobResponsibilities(jd){
+  const lines = jd.split(/\n|(?<=[.!?])\s+/).map(line=>line.trim())
+    .map(line=>line.replace(/^[•*\-–—]\s*/, '').trim())
+    .filter(line=>line.length>=35 && line.length<=300);
+  const seen = new Set();
+  return lines.filter(line=>{
+    const key = line.toLowerCase();
+    if(seen.has(key)) return false;
+    seen.add(key);
+    return !/^(job description|responsibilities|requirements|qualifications|about the role|what you('ll| will) do)\s*:?[.]?$/i.test(line);
+  }).slice(0,10);
+}
+
+function responsibilityTerms(text){
+  return new Set(tokenize(text).filter(w=>w.length>2 && !ATS_STOPWORDS.has(w)).map(stem));
+}
+
+function findBestCvBullet(responsibility){
+  const responsibilitySet = responsibilityTerms(responsibility);
+  let best = null;
+  data.experience.forEach(e=>{
+    bulletsToArray(e.bullets).forEach((bullet, bulletIndex)=>{
+      const bulletSet = responsibilityTerms(bullet);
+      const shared = [...responsibilitySet].filter(term=>bulletSet.has(term));
+      const score = shared.length;
+      if(!best || score>best.score){
+        best = {expId:e.id, bulletIndex, bullet, role:e.title||'this role', shared, score};
+      }
+    });
+  });
+  return best && best.score>0 ? best : null;
+}
+
+function alignJobResponsibilities(){
+  const jd = document.getElementById('f-jobdesc').value.trim();
+  const resultsEl = document.getElementById('responsibilityResults');
+  if(!jd){
+    resultsEl.innerHTML = `<p class="ats-empty">Paste a job description above first, then match its responsibilities.</p>`;
+    return;
+  }
+  const responsibilities = extractJobResponsibilities(jd);
+  if(!responsibilities.length){
+    resultsEl.innerHTML = `<p class="ats-empty">Couldn't identify responsibility statements in that job description.</p>`;
+    return;
+  }
+  const matches = responsibilities.map((responsibility, index)=>({
+    id:'responsibility-'+index,
+    responsibility,
+    match:findBestCvBullet(responsibility)
+  }));
+  resultsEl.innerHTML = `
+    <div class="tailor-title" style="margin-top:16px;">Responsibility alignment</div>
+    <p class="tailor-sub">Each suggestion starts from a real achievement in your CV. Edit it only to make the wording closer to the vacancy while keeping the same truth.</p>
+    ${matches.map(item=> item.match ? `
+      <div class="responsibility-card">
+        <div class="responsibility-source"><strong>Job responsibility:</strong> ${esc(item.responsibility)}</div>
+        <div class="responsibility-match">Best evidence found in ${esc(item.match.role)} · matches: ${esc(item.match.shared.join(', '))}</div>
+        <textarea id="${item.id}" style="min-height:64px;">${esc(item.match.bullet)}</textarea>
+        <button class="add-btn" type="button" onclick="applyResponsibilitySuggestion('${item.id}', '${item.match.expId}', ${item.match.bulletIndex})">Save to this CV bullet</button>
+      </div>
+    ` : `
+      <div class="responsibility-card">
+        <div class="responsibility-source"><strong>Job responsibility:</strong> ${esc(item.responsibility)}</div>
+        <div class="responsibility-gap">No supporting achievement was found in the current CV. Add it only if you genuinely have this experience.</div>
+      </div>
+    `).join('')}
+  `;
+}
+
+function applyResponsibilitySuggestion(inputId, expId, bulletIndex){
+  const input = document.getElementById(inputId);
+  const item = data.experience.find(entry=>entry.id===expId);
+  if(!input || !item) return;
+  const bullets = bulletsToArray(item.bullets);
+  if(bulletIndex<0 || bulletIndex>=bullets.length) return;
+  bullets[bulletIndex] = input.value.trim() || bullets[bulletIndex];
+  item.bullets = bullets.join('\n');
+  renderExperienceForm();
+  renderPreview();
+  input.value = bullets[bulletIndex];
+}
+
+function highlightMatches(text, keywords){
+  let escd = esc(text);
+  if(!keywords || !keywords.length) return escd;
+  const sorted = [...keywords].sort((a,b)=> b.length-a.length);
+  sorted.forEach(k=>{
+    const escapedK = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp('\\b('+escapedK+')\\b', 'ig');
+    escd = escd.replace(re, (m, p1, offset, str)=>{
+      const before = str.slice(0, offset);
+      const openCount = (before.match(/<mark/g)||[]).length;
+      const closeCount = (before.match(/<\/mark>/g)||[]).length;
+      if(openCount>closeCount) return m; // already inside a highlighted span
+      return '<mark class="tm">'+m+'</mark>';
+    });
+  });
+  return escd;
+}
+
+function tailorCvToJob(){
+  const jd = document.getElementById('f-jobdesc').value.trim();
+  const resultsEl = document.getElementById('tailorResults');
+  if(!jd){
+    resultsEl.innerHTML = `<p class="ats-empty">Paste a job description above first, then tailor.</p>`;
+    return;
+  }
+  const keywords = extractJdKeywords(jd);
+  if(!keywords.length){
+    resultsEl.innerHTML = `<p class="ats-empty">Couldn't find enough distinct terms in that job description to tailor against.</p>`;
+    return;
+  }
+
+  // Snapshot the true original order/titles once, so Undo always has something real to restore.
+  if(!tailorSnapshot){
+    tailorSnapshot = {
+      skills: data.skills,
+      experience: data.experience.map(e=>({id:e.id, bullets:e.bullets, title:e.title}))
+    };
+  }
+
+  // Reorder skills: genuine matches to the job first (in JD relevance order), everything else follows, unchanged.
+  const skillSep = /\n/.test(data.skills) ? '\n' : ', ';
+  const skillsArr = skillsToArray();
+  const skillRank = s=>{
+    const low = s.toLowerCase();
+    const idx = keywords.findIndex(k=> low.includes(k) || k.includes(low));
+    return idx===-1 ? 999 : idx;
+  };
+  const reorderedSkills = skillsArr.map((s,i)=>({s,i,r:skillRank(s)}))
+    .sort((a,b)=> a.r-b.r || a.i-b.i)
+    .map(x=>x.s);
+  data.skills = reorderedSkills.join(skillSep);
+  document.getElementById('f-skills').value = data.skills;
+
+  // Reorder bullets within each role: highest keyword-overlap bullets lead, ties keep original order.
+  let rolesReordered = 0;
+  data.experience.forEach(e=>{
+    const bullets = bulletsToArray(e.bullets);
+    if(bullets.length<2) return;
+    const scored = bullets.map((b,i)=>({b,i,score:countKeywordHits(b, keywords)}));
+    const before = scored.map(x=>x.i).join(',');
+    scored.sort((a,b)=> b.score-a.score || a.i-b.i);
+    if(scored.map(x=>x.i).join(',') !== before) rolesReordered++;
+    e.bullets = scored.map(x=>x.b).join('\n');
+  });
+
+  tailorKeywords = keywords.filter(k=> keywordMatches(k, resumeFullText(), resumeStemmedTokenSet()));
+  tailorActive = true;
+
+  renderExperienceForm();
+  renderPreview();
+
+  const suggestedSummary = buildSuggestedSummary(jd, keywords);
+  const titleAlignHTML = buildTitleAlignmentHTML(jd);
+  const rephraseHTML = buildResponsibilityRephraseHTML(keywords);
+  resultsEl.innerHTML = `
+    <p class="tailor-note">✓ Reordered ${reorderedSkills.length} skills and bullets across ${rolesReordered} role${rolesReordered===1?'':'s'} to lead with what matches this job. Matched terms are <mark class="tm">highlighted</mark> in the preview. Nothing was added that wasn't already in your CV.</p>
+    <label style="margin-top:12px;">Suggested summary opening — edit freely, only keep what's true</label>
+    <textarea id="tailorSuggestedSummary" style="min-height:80px;">${esc(suggestedSummary)}</textarea>
+    <button class="add-btn" type="button" onclick="applySuggestedSummary()">Use this as my summary</button>
+    ${rephraseHTML}
+    ${titleAlignHTML}
+    <button class="reset-link" type="button" style="margin-top:10px;display:block;" onclick="undoTailoring()">Undo tailoring — restore original order, wording, and titles</button>
+  `;
+}
+
+/* ---- Role title alignment: only ever suggested, never auto-applied, and only
+   when a past role and the vacancy genuinely share a function (word overlap),
+   so this can't be used to claim a title someone never held. ---- */
+function coreRoleWords(title){
+  return tokenize(title||'').filter(w=> w.length>2 && !ATS_STOPWORDS.has(w));
+}
+function titleOverlapScore(a,b){
+  const wa = new Set(coreRoleWords(a).map(stem));
+  const wb = new Set(coreRoleWords(b).map(stem));
+  if(!wa.size || !wb.size) return 0;
+  let overlap = 0;
+  wa.forEach(w=>{ if(wb.has(w)) overlap++; });
+  return overlap / Math.min(wa.size, wb.size);
+}
+
+function buildTitleAlignmentHTML(jd){
+  const jdTitle = extractJdTitle(jd);
+  if(!jdTitle) return '';
+  const candidates = data.experience
+    .filter(e=> e.title && e.title.trim().toLowerCase() !== jdTitle.trim().toLowerCase())
+    .map(e=> ({e, overlap: titleOverlapScore(e.title, jdTitle)}))
+    .filter(x=> x.overlap >= 0.5);
+  if(!candidates.length) return '';
+  return `
+    <div class="tailor-title-align">
+      <div class="kw-group-title">Role titles worth aligning</div>
+      <p class="hint">These roles already share real overlap with "${esc(jdTitle)}" — rename only if the wording still accurately describes the scope and seniority of what you actually did.</p>
+      ${candidates.map(x=>`
+        <div class="title-align-row">
+          <span class="title-align-from">${esc(x.e.title)}</span>
+          <span class="title-align-arrow">→</span>
+          <input type="text" id="title-align-${x.e.id}" value="${esc(jdTitle)}">
+          <button class="icon-btn" type="button" style="color:var(--teal);" onclick="applyTitleAlignment('${x.e.id}')">Use this title</button>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function applyTitleAlignment(id){
+  const input = document.getElementById('title-align-'+id);
+  const item = data.experience.find(x=>x.id===id);
+  if(!input || !item) return;
+  item.title = input.value;
+  renderExperienceForm();
+  renderPreview();
+}
+
+/* ---- Responsibility phrasing suggestions: for bullets that already describe
+   something the JD asks for, just in different words (a stemmed match, not a
+   literal one), suggest closer wording. Always editable, always requires an
+   explicit save — the meaning is meant to stay the same, only the phrasing shifts. ---- */
+function findNearMissTerms(bulletText, keywords){
+  const low = bulletText.toLowerCase();
+  const bulletWords = tokenize(bulletText).map(w=> ({w, s: stem(w)}));
+  const results = [];
+  keywords.forEach(k=>{
+    if(low.includes(k)) return; // already literal — nothing to rephrase
+    const kWords = k.split(' ');
+    if(kWords.length===1){
+      const match = bulletWords.find(x=> x.s === stem(k));
+      if(match) results.push({keyword:k, originalWord:match.w});
+    } else {
+      const allStemsPresent = kWords.every(kw=> bulletWords.some(x=> x.s === stem(kw)));
+      if(allStemsPresent) results.push({keyword:k, originalWord:null});
+    }
+  });
+  return results;
+}
+
+function buildRephraseSuggestion(bulletText, nearMisses){
+  let out = bulletText;
+  nearMisses.forEach(nm=>{
+    if(!nm.originalWord) return; // bigram near-misses are flagged, not auto-swapped
+    const escapedWord = nm.originalWord.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const re = new RegExp('\\b'+escapedWord+'\\b','i');
+    out = out.replace(re, m=> (m[0]===m[0].toUpperCase() ? nm.keyword.charAt(0).toUpperCase()+nm.keyword.slice(1) : nm.keyword));
+  });
+  return out;
+}
+
+function buildResponsibilityRephraseHTML(keywords){
+  const cards = [];
+  data.experience.forEach(e=>{
+    bulletsToArray(e.bullets).forEach((b,i)=>{
+      const nearMisses = findNearMissTerms(b, keywords);
+      if(nearMisses.length) cards.push({expId:e.id, bulletIndex:i, text:b, nearMisses});
+    });
+  });
+  if(!cards.length) return '';
+  cards.sort((a,b)=> b.nearMisses.length - a.nearMisses.length);
+  const top = cards.slice(0,6);
+  return `
+    <div class="tailor-title-align">
+      <div class="kw-group-title">Responsibility phrasing suggestions</div>
+      <p class="hint">These bullets already describe something the job description asks for, just worded differently. Edit freely, then save only wording that's still accurate.</p>
+      ${top.map(c=>{
+        const suggestion = buildRephraseSuggestion(c.text, c.nearMisses);
+        return `
+          <div class="rephrase-card">
+            <div class="rephrase-original">Currently: "${esc(c.text)}"</div>
+            <div class="kw-wrap">${c.nearMisses.map(nm=>`<span class="kw-chip missing">${esc(nm.keyword)}</span>`).join('')}</div>
+            <textarea id="bullet-rephrase-${c.expId}-${c.bulletIndex}">${esc(suggestion)}</textarea>
+            <button class="add-btn" type="button" onclick="applyBulletRephrase('${c.expId}', ${c.bulletIndex})">Save this wording</button>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function applyBulletRephrase(expId, bulletIndex){
+  const ta = document.getElementById('bullet-rephrase-'+expId+'-'+bulletIndex);
+  const item = data.experience.find(x=>x.id===expId);
+  if(!ta || !item) return;
+  const bullets = bulletsToArray(item.bullets);
+  bullets[bulletIndex] = ta.value;
+  item.bullets = bullets.join('\n');
+  renderExperienceForm();
+  renderPreview();
+}
+
+function applySuggestedSummary(){
+  const ta = document.getElementById('tailorSuggestedSummary');
+  if(!ta) return;
+  data.summary = ta.value;
+  document.getElementById('f-summary').value = ta.value;
+  renderPreview();
+}
+
+function undoTailoring(){
+  if(!tailorSnapshot) return;
+  data.skills = tailorSnapshot.skills;
+  document.getElementById('f-skills').value = data.skills;
+  tailorSnapshot.experience.forEach(snap=>{
+    const item = data.experience.find(x=>x.id===snap.id);
+    if(item){ item.bullets = snap.bullets; item.title = snap.title; }
+  });
+  tailorSnapshot = null;
+  tailorActive = false;
+  tailorKeywords = [];
+  renderExperienceForm();
+  renderPreview();
+  document.getElementById('tailorResults').innerHTML = `<p class="ats-empty">Original order and titles restored.</p>`;
+}
+
+/* ============ INIT ============ */
+function init(){
+  renderSwatches();
+  renderDensityBtns();
+  applyThemeClass();
+  addExperience({title:'',company:'',location:'',start:'',end:'',current:false,bullets:''});
+  addEducation({degree:'',institution:'',location:'',start:'',end:'',details:''});
+  renderPreview();
+}
+init();
+</script>
+</body>
+</html>
